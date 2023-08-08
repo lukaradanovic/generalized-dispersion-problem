@@ -209,6 +209,8 @@ Result getNonFeasibleSolutionResult()
     result.maxTime = -1;
     result.minCapacity = -1;
     result.maxCost = -1;
+    result.neighborhoodImprovements = {0, 0, 0};
+    result.neighborhoodRuns = {0, 0, 0};
     return result;
 }
 
