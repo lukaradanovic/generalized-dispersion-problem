@@ -5,7 +5,7 @@
 Result Algorithm::execute()
 {
     startTime = std::chrono::steady_clock::now();
-    return multistartVND();
+    return VNS(); //multistartVND();
 }
 
 int Algorithm::getRunningTime() const
@@ -249,7 +249,7 @@ void Algorithm::localSearchSwapWithIndexRemembering(Solution& s, bool& hasImprov
     }
 }
 
-void Algorithm::vnd(Solution& s, bool shuffle)
+void Algorithm::vnd(Solution& s, bool shuffle, bool doLS3)
 {
     bool hasImproved;
     while (true)
@@ -264,7 +264,7 @@ void Algorithm::vnd(Solution& s, bool shuffle)
         localSearchSwap(s, hasImproved);
         if (!hasImproved)
             localSearch2Out1In(s, hasImproved);
-        if (!hasImproved)
+        if (!hasImproved && doLS3)
             localSearch1Out2In(s, hasImproved);
         if (!hasImproved)
             break;
@@ -273,6 +273,50 @@ void Algorithm::vnd(Solution& s, bool shuffle)
 }
 
 void Algorithm::shake(Solution& s, int k)
+{
+    for (int i = 0; i < k; i++)
+    {
+        if (s.numIncluded == problem.n)
+            break;
+
+        std::shuffle(std::next(s.sites.begin(), s.numIncluded), s.sites.end(), generator);
+
+        bool siteAdded = false;
+        for (int j = s.numIncluded; j < problem.n; j++)
+        {
+            if (s.cost + problem.costs[s.sites[j]] > problem.maxCost)
+                continue;
+            
+            std::swap(s.sites[s.numIncluded], s.sites[j]);
+            s.capacity = s.capacity + problem.capacities[s.sites[j]];
+            s.cost = s.cost + problem.costs[s.sites[j]];
+            s.numIncluded++;
+            siteAdded = true;
+            break;
+        }
+
+        if (siteAdded)
+            continue;
+
+        std::uniform_int_distribution<int> distribIn(0, s.numIncluded - 1);
+        int idx1 = distribIn(generator);
+        
+        for (int idx2 = s.numIncluded; idx2 < problem.n; idx2++)
+        {
+            int site1 = s.sites[idx1], site2 = s.sites[idx2];
+            if (s.capacity - problem.capacities[site1] + problem.capacities[site2] >= problem.minCapacity && s.cost - problem.costs[site1] + problem.costs[site2] <= problem.maxCost)
+            {
+                std::swap(s.sites[idx1], s.sites[idx2]);
+                s.capacity = s.capacity - problem.capacities[site1] + problem.capacities[site2];
+                s.cost = s.cost - problem.costs[site1] + problem.costs[site2];
+                break;
+            }
+        }
+    }
+    updateSolutionInfo(problem, s);
+}
+
+void Algorithm::shakeSimple(Solution& s, int k)
 {
     for (int i = 0; i < k; i++)
     {
@@ -311,6 +355,7 @@ Result Algorithm::multistartVND()
                 std::cerr << "Greedy algorithm failed to construct feasible solution." << std::endl;
             return getNonFeasibleSolutionResult();
         }
+        //addAditionalSites(s, 0.2);
         vnd(s, true);
         if (s.minDistance > bestValue)
         {
@@ -357,7 +402,7 @@ Result Algorithm::VNS()
     {
         Solution newSol = bestSol;
         shake(newSol, k);
-        vnd(newSol);
+        vnd(newSol, true, true);
 
         if (newSol.minDistance > bestSol.minDistance || (newSol.minDistance == bestSol.minDistance && newSol.numCritical < bestSol.numCritical))
         {
@@ -393,4 +438,23 @@ Result Algorithm::VNS()
     fillResultInfo(result, bestSol, problem, timeMax, neighborhoodRuns, neighborhoodImprovements);
 
     return result;
+}
+
+void Algorithm::addAditionalSites(Solution& s, double additionalSiteProb)
+{
+    // for variable number of included sites
+    if (additionalSiteProb > 0)
+    {
+        std::uniform_real_distribution<> distrib(0.0, 1.0);    
+        for (int i = s.numIncluded; i < problem.n; i++)
+        {
+            if (s.cost + problem.costs[s.sites[i]] <= problem.maxCost && distrib(generator) < additionalSiteProb)
+            {
+                s.cost += problem.costs[s.sites[i]];
+                s.capacity += problem.capacities[s.sites[i]];
+                std::swap(s.sites[s.numIncluded], s.sites[i]);
+                s.numIncluded++;
+            }
+        }
+    }
 }

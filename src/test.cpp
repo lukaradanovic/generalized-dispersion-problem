@@ -49,3 +49,13 @@ void processDirectory(const std::string& inputDir, const std::string& outputDir,
         std::cout << " done." << std::endl;
     }
 }
+
+void processFile(const std::string& inputFile, int seed)
+{
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    Problem p = loadData(inputFile);
+    generator.seed(seed);
+    Algorithm alg = Algorithm(p, generator); 
+    Result res = alg.execute();
+}

@@ -188,7 +188,7 @@ void fillResultInfo(Result& result, const Solution& bestSol, const Problem& p, i
 {
     result.cost = bestSol.cost;
     result.capacity = bestSol.capacity;
-    result.time = result.history[result.history.size() - 1].second;
+    result.time = result.history.size() > 0 ? result.history[result.history.size() - 1].second : -1;
     result.minDistance = bestSol.minDistance;
     result.maxTime = timeMax;
     result.minCapacity = p.minCapacity;
