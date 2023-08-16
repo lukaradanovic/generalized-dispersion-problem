@@ -2,6 +2,9 @@
 #include "util.hpp"
 #include <limits>
 #include <algorithm>
+#include <string>
+#include <iostream>
+#include <sstream>
 
 Problem loadData(const std::string& filename)
 {
@@ -184,7 +187,7 @@ std::vector<int> getIncludedSitesForOutput(const Solution& s)
     return included;
 }
 
-void fillResultInfo(Result& result, const Solution& bestSol, const Problem& p, int timeMax, const std::vector<int>& nRuns, const std::vector<int>& nImps)
+void fillResultInfo(Result& result, const Solution& bestSol, const Problem& p, int timeMax, const std::vector<int>& nRuns, const std::vector<int>& nImps, int shakeIters, int shakeLoops)
 {
     result.cost = bestSol.cost;
     result.capacity = bestSol.capacity;
@@ -196,6 +199,8 @@ void fillResultInfo(Result& result, const Solution& bestSol, const Problem& p, i
     result.includedSites = getIncludedSitesForOutput(bestSol);
     result.neighborhoodImprovements = nImps;
     result.neighborhoodRuns = nRuns;
+    result.shakeIters = shakeIters;
+    result.shakeLoops = shakeLoops;
 }
 
 Result getNonFeasibleSolutionResult()
@@ -217,12 +222,13 @@ Result getNonFeasibleSolutionResult()
 void writeResultToCSV(const Result& res, std::ofstream& output, const std::string& instanceName)
 {
     output << instanceName << "," << res.minDistance << "," << res.time << "," << res.maxTime << "," << res.cost << "," << res.maxCost << "," << res.capacity << "," << res.minCapacity 
-    << "," << res.neighborhoodImprovements[0] <<"/"<< res.neighborhoodRuns[0]<<","<< res.neighborhoodImprovements[1] <<"/"<< res.neighborhoodRuns[1]<<","<< res.neighborhoodImprovements[2] <<"/"<< res.neighborhoodRuns[2]<< std::endl;
+    << "," << res.neighborhoodImprovements[0] <<"/"<< res.neighborhoodRuns[0]<<","<< res.neighborhoodImprovements[1] <<"/"<< res.neighborhoodRuns[1]<<","<< res.neighborhoodImprovements[2] <<"/"<< res.neighborhoodRuns[2]
+    << "," << res.shakeIters << "," << res.shakeLoops << std::endl;
 }
 
 void writeCSVHeader(std::ofstream& output)
 {
-    output << "Instance, Min Distance, Time To Best (ms), Max Time (ms), Cost, Max Cost, Capacity, Min Capacity, LS1, LS2, LS3" << std::endl;
+    output << "Instance, Min Distance, Time To Best (ms), Max Time (ms), Cost, Max Cost, Capacity, Min Capacity, LS1, LS2, LS3, Shake Iters, Shake Loops" << std::endl;
 }
 
 void writeResultToFile(const Result& result, std::ofstream& output)
@@ -243,4 +249,31 @@ void writeResultToFile(const Result& result, std::ofstream& output)
     output << "LS1: " << result.neighborhoodImprovements[0] << "/" << result.neighborhoodRuns[0] << std::endl;
     output << "LS2: " << result.neighborhoodImprovements[1] << "/" << result.neighborhoodRuns[1] << std::endl;
     output << "LS3: " << result.neighborhoodImprovements[2] << "/" << result.neighborhoodRuns[2] << std::endl;
+    output << "shakeIters: " << result.shakeIters << std::endl;
+    output << "shakeLoops: " << result.shakeLoops << std::endl;
+}
+
+double getMinDistance(const std::vector<int> includedSites, const Problem& p)
+{
+    double minDist = std::numeric_limits<double>::max();
+    for (int i = 0; i < includedSites.size() - 1; i++)
+    {
+        for (int j = i + 1; j < includedSites.size(); j++)
+            minDist = std::min(p.distances[includedSites[i] - 1][includedSites[j] - 1], minDist);
+    }
+    return minDist;
+}
+
+std::vector<int> readIncludedSites(const std::string& filename)
+{
+    std::vector<int> sites;
+    std::ifstream input(filename);
+    std::string line;
+    std::getline(input, line); // ignore first line
+    std::getline(input, line);
+    std::string site;
+    std::stringstream stream(line);
+    while (std::getline(stream, site, ' '))
+        sites.push_back(std::stoi(site));
+    return sites;
 }

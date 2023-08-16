@@ -316,6 +316,86 @@ void Algorithm::shake(Solution& s, int k)
     updateSolutionInfo(problem, s);
 }
 
+void Algorithm::shake2(Solution& s, int k)
+{
+    for (int i = 0; i < k; i++)
+    {
+        std::shuffle(s.sites.begin(), std::next(s.sites.begin(), s.numIncluded), generator);
+        std::shuffle(std::next(s.sites.begin(), s.numIncluded), s.sites.end(), generator);
+
+        std::uniform_real_distribution<> distrib(0.0, 1.0);
+        double randNum = distrib(generator);
+
+        bool found = false;
+
+        if (randNum < 0.5)
+        {
+            for (int idx1 = 0; idx1 < s.numIncluded && !found; idx1++)
+            {
+                for (int idx2 = s.numIncluded; idx2 < problem.n - 1 && !found; idx2++)
+                {
+                    for (int idx3 = idx2 + 1; idx3 < problem.n && !found; idx3++)
+                    {
+                        int site1 = s.sites[idx1], site2 = s.sites[idx2], site3 = s.sites[idx3];
+                        if (s.capacity - problem.capacities[site1] + problem.capacities[site2] + problem.capacities[site3] >= problem.minCapacity
+                            && s.cost - problem.costs[site1] + problem.costs[site2] + problem.costs[site3] <= problem.maxCost)
+                        {
+                            s.capacity = s.capacity - problem.capacities[site1] + problem.capacities[site2] + problem.capacities[site3];
+                            s.cost = s.cost - problem.costs[site1] + problem.costs[site2] + problem.costs[site3];
+                            std::swap(s.sites[idx1], s.sites[idx2]);
+                            std::swap(s.sites[s.numIncluded], s.sites[idx3]);
+                            s.numIncluded++;
+                            found = true;
+                        }
+                    }
+                }
+            }
+        }
+        else if (randNum < 0.75)
+        {
+            for (int idx1 = 0; idx1 < s.numIncluded - 1 && !found; idx1++)
+            {
+                for (int idx2 = idx1 + 1; idx2 < s.numIncluded && !found; idx2++)
+                {
+                    for (int idx3 = s.numIncluded; idx3 < problem.n && !found; idx3++)
+                    {
+                        int site1 = s.sites[idx1], site2 = s.sites[idx2], site3 = s.sites[idx3];
+                        if (s.capacity - problem.capacities[site1] - problem.capacities[site2] + problem.capacities[site3] >= problem.minCapacity
+                            && s.cost - problem.costs[site1] - problem.costs[site2] + problem.costs[site3] <= problem.maxCost)
+                        {
+                            s.capacity = s.capacity - problem.capacities[site1] - problem.capacities[site2] + problem.capacities[site3];
+                            s.cost = s.cost - problem.costs[site1] - problem.costs[site2] + problem.costs[site3];
+                            std::swap(s.sites[idx1], s.sites[idx3]);
+                            std::swap(s.sites[idx2], s.sites[s.numIncluded-1]);
+                            s.numIncluded--;
+                            found = true;
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            for (int idx1 = 0; idx1 < s.numIncluded && !found; idx1++)
+            {
+                for (int idx2 = s.numIncluded; idx2 < problem.n && !found; idx2++)
+                {
+                    int site1 = s.sites[idx1], site2 = s.sites[idx2];
+                    if (s.capacity - problem.capacities[site1] + problem.capacities[site2] >= problem.minCapacity
+                        && s.cost - problem.costs[site1] + problem.costs[site2] <= problem.maxCost)
+                    {
+                        s.capacity = s.capacity - problem.capacities[site1] + problem.capacities[site2];
+                        s.cost = s.cost - problem.costs[site1] + problem.costs[site2];
+                        std::swap(s.sites[idx1], s.sites[idx2]);
+                        found = true;
+                    }
+                }
+            }
+        }
+    }
+    updateSolutionInfo(problem, s);
+}
+
 void Algorithm::shakeSimple(Solution& s, int k)
 {
     for (int i = 0; i < k; i++)
@@ -356,7 +436,7 @@ Result Algorithm::multistartVND()
             return getNonFeasibleSolutionResult();
         }
         //addAditionalSites(s, 0.2);
-        vnd(s, true);
+        vnd(s, true, false);
         if (s.minDistance > bestValue)
         {
             bestValue = s.minDistance;
@@ -381,11 +461,70 @@ Result Algorithm::multistartVND()
     return result;
 }
 
+Result Algorithm::multistartVND2()
+{
+    Result result;
+
+    double bestValue = std::numeric_limits<double>::min();
+    Solution bestSol;
+    int bestSolTime = -1;
+    int nonImprovingIters = 0;
+    int LS3Treshold = 2;
+    bool doLS3 = false;
+    while (getRunningTime() < timeMax)
+    {
+        Solution s;
+        bool feasibleSolutionCreated = createGreedySolution(s);
+        if (!feasibleSolutionCreated)
+        {
+            if (verbose)
+                std::cerr << "Greedy algorithm failed to construct feasible solution." << std::endl;
+            return getNonFeasibleSolutionResult();
+        }
+        //addAditionalSites(s, 0.2);
+        vnd(s, true, doLS3);
+        if (doLS3)
+            doLS3 = false;
+        if (s.minDistance > bestValue)
+        {
+            bestValue = s.minDistance;
+            bestSol = s;
+            bestSolTime = getRunningTime();
+
+            result.history.push_back({bestValue, bestSolTime});
+
+            if (verbose)
+                std::cout << bestValue << "  " << bestSolTime <<  std::endl;
+        }
+        else
+        {
+            nonImprovingIters++;
+            if (nonImprovingIters == LS3Treshold)
+            {
+                doLS3 = true;
+                nonImprovingIters = 0;
+            }
+        }
+    }
+
+    if (verbose)
+    {
+        std::cout << "distance: " << bestSol.minDistance << "  cost:  " << bestSol.cost << "  capacity:  " << bestSol.capacity << " numIncluded: " << bestSol.numIncluded << std::endl;
+        std::cout << "time: " << bestSolTime << std::endl;
+    }
+
+    fillResultInfo(result, bestSol, problem, timeMax, neighborhoodRuns, neighborhoodImprovements);
+
+    return result;
+}
+
 Result Algorithm::VNS()
 {
     Result result;
 
     int kMax = problem.n * 0.1;
+    int kMin = 1;
+    int kStep = kMax / 4;
     double bestValue = std::numeric_limits<double>::min();
     int bestSolTime = -1;
 
@@ -397,17 +536,19 @@ Result Algorithm::VNS()
             std::cerr << "Greedy algorithm failed to construct feasible solution." << std::endl;
         return getNonFeasibleSolutionResult();
     }
-    int k = 1;
-    while (k <= kMax && getRunningTime() < timeMax)
+    int shakeIters = 0;
+    int shakeLoops = 0;
+    int k = kMin;// 1;
+    while (/*k <= kMax && */getRunningTime() < timeMax)
     {
         Solution newSol = bestSol;
-        shake(newSol, k);
-        vnd(newSol, true, true);
+        shake2(newSol, k);
+        vnd(newSol, true, false);
 
         if (newSol.minDistance > bestSol.minDistance || (newSol.minDistance == bestSol.minDistance && newSol.numCritical < bestSol.numCritical))
         {
             bestSol = newSol;
-            k = 1;
+            k = kMin;
 
             if (newSol.minDistance > bestValue)
             {
@@ -423,9 +564,17 @@ Result Algorithm::VNS()
         }
         else
         {
-            k++;
+            shakeIters++;
+            k += kStep; //k++;
             if (k > kMax)
-                k = 1;
+            {
+                shakeLoops++;
+                if (kMin == kStep)
+                    kMin = 1;
+                else
+                    kMin++;
+                k = kMin; //k = 1;
+            }
         }
     }
 
@@ -435,7 +584,7 @@ Result Algorithm::VNS()
         std::cout << "time: " << bestSolTime << std::endl;
     }
 
-    fillResultInfo(result, bestSol, problem, timeMax, neighborhoodRuns, neighborhoodImprovements);
+    fillResultInfo(result, bestSol, problem, timeMax, neighborhoodRuns, neighborhoodImprovements, shakeIters, shakeLoops);
 
     return result;
 }

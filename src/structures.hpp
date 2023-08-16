@@ -46,6 +46,8 @@ struct Result
     double maxCost;
     double minCapacity;
     double maxTime;
+    int shakeIters;
+    int shakeLoops;
 };
 
 Problem loadData(const std::string& filename);
@@ -59,11 +61,13 @@ bool isSolutionFeasibleAfterChange(const std::vector<int>& removedIndices, const
 
 std::vector<int> getIncludedSitesForOutput(const Solution& s);
 
-void fillResultInfo(Result& result, const Solution& bestSol, const Problem& p, int timeMax, const std::vector<int>& nRuns, const std::vector<int>& nImps);
+void fillResultInfo(Result& result, const Solution& bestSol, const Problem& p, int timeMax, const std::vector<int>& nRuns, const std::vector<int>& nImps, int shakeIters = 0, int shakeLoops = 0);
 Result getNonFeasibleSolutionResult();
 void writeResultToCSV(const Result& res, std::ofstream& output, const std::string& instanceName);
 void writeCSVHeader(std::ofstream& output);
 void writeResultToFile(const Result& result, std::ofstream& output);
 
+double getMinDistance(const std::vector<int> includedSites, const Problem& p);
+std::vector<int> readIncludedSites(const std::string& filename);
 
 #endif

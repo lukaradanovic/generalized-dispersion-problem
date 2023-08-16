@@ -23,11 +23,13 @@ private:
     void localSearch2Out1In(Solution& s, bool& hasImproved);
     void localSearch1Out2In(Solution& s, bool& hasImproved);
     void localSearchSwapWithIndexRemembering(Solution& s, bool& hasImproved);
-    void Algorithm::vnd(Solution& s, bool shuffle = false, bool doLS3 = true);
+    void vnd(Solution& s, bool shuffle = false, bool doLS3 = true);
     void shake(Solution& s, int k);
     void shakeSimple(Solution& s, int k);
+    void shake2(Solution& s, int k);
     void addAditionalSites(Solution& s, double additionalSiteProb);
     Result multistartVND();
+    Result multistartVND2();
     Result VNS();
 
     const Problem& problem;
