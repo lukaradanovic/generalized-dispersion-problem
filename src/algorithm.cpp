@@ -328,7 +328,7 @@ void Algorithm::shake2(Solution& s, int k)
 
         bool found = false;
 
-        if (randNum < 0.5)
+        if (randNum < ls3Prob)
         {
             for (int idx1 = 0; idx1 < s.numIncluded && !found; idx1++)
             {
@@ -351,7 +351,7 @@ void Algorithm::shake2(Solution& s, int k)
                 }
             }
         }
-        else if (randNum < 0.75)
+        else if (randNum < ls3Prob + ls2Prob)
         {
             for (int idx1 = 0; idx1 < s.numIncluded - 1 && !found; idx1++)
             {
@@ -522,9 +522,9 @@ Result Algorithm::VNS()
 {
     Result result;
 
-    int kMax = problem.n * 0.1;
+    int kMax = problem.n * kmaxCoef;
     int kMin = 1;
-    int kStep = kMax / 4;
+    int kStep = kMax * kstepCoef;
     double bestValue = std::numeric_limits<double>::min();
     int bestSolTime = -1;
 
@@ -538,8 +538,8 @@ Result Algorithm::VNS()
     }
     int shakeIters = 0;
     int shakeLoops = 0;
-    int k = kMin;// 1;
-    while (/*k <= kMax && */getRunningTime() < timeMax)
+    int k = kMin;
+    while (getRunningTime() < timeMax)
     {
         Solution newSol = bestSol;
         shake2(newSol, k);
@@ -565,7 +565,7 @@ Result Algorithm::VNS()
         else
         {
             shakeIters++;
-            k += kStep; //k++;
+            k += kStep;
             if (k > kMax)
             {
                 shakeLoops++;
@@ -573,7 +573,7 @@ Result Algorithm::VNS()
                     kMin = 1;
                 else
                     kMin++;
-                k = kMin; //k = 1;
+                k = kMin;
             }
         }
     }

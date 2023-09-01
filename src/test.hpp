@@ -5,5 +5,6 @@
 
 void processDirectory(const std::string& inputDir, const std::string& outputDir, int testRepetitions);
 void processFile(const std::string& inputFile, int seed);
+void iraceTest(char** argv);
 
 #endif

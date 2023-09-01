@@ -59,3 +59,23 @@ void processFile(const std::string& inputFile, int seed)
     Algorithm alg = Algorithm(p, generator); 
     Result res = alg.execute();
 }
+
+void iraceTest(char** argv)
+{
+    int seed = std::stoi(argv[3]);
+    std::string filename(argv[4]);
+    double kstepCoef = std::stod(argv[6]);
+    double kmaxCoef = std::stod(argv[8]);
+    double ls3Prob = std::stod(argv[10]);
+    double ls2Prob = std::stod(argv[12]);
+
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    generator.seed(seed);
+
+    Problem p = loadData(filename);
+    Algorithm alg = Algorithm(p, generator, 60000, false, kstepCoef, kmaxCoef, ls3Prob, ls2Prob);
+    Result res = alg.execute();
+
+    std::cout << -res.minDistance << std::endl;
+}
