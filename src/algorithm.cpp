@@ -68,7 +68,7 @@ bool Algorithm::createGreedySolution(Solution& s)
 void Algorithm::localSearchSwap(Solution& s, bool& hasImproved)
 {
     neighborhoodRuns[0]++;
-    int idx1 = -1, idx2 = -1;
+    int outIdx = -1, inIdx = -1;
     double currentMinDistance = s.minDistance;
     int currentCriticalCount = s.numCritical;
     bool shouldFinish = false;
@@ -85,15 +85,15 @@ void Algorithm::localSearchSwap(Solution& s, bool& hasImproved)
             if (!isSolutionFeasibleAfterChange({i}, {j}, s, problem))
                 continue;
 
-            auto [minDistance, criticalCount] = calcMinDistanceAfterChange({i}, {j}, s, problem);
+            auto [minDistance, criticalCount] = getSwapEvaluation(s.sites[i], s.sites[j], s);
             
             if (minDistance > currentMinDistance || (minDistance == currentMinDistance && criticalCount < currentCriticalCount))
             {
                 currentMinDistance = minDistance;
                 currentCriticalCount = criticalCount;
                 hasImproved = true;
-                idx1 = i;
-                idx2 = j;
+                outIdx = i;
+                inIdx = j;
                 shouldFinish = true;
             }
         }
@@ -101,16 +101,15 @@ void Algorithm::localSearchSwap(Solution& s, bool& hasImproved)
 
     if (hasImproved)
     {
-        std::swap(s.sites[idx1], s.sites[idx2]);
+        performSwap(outIdx, inIdx, s);
         neighborhoodImprovements[0]++;
-        updateSolutionInfo(problem, s);
     }
 }
 
 void Algorithm::localSearch2Out1In(Solution& s, bool& hasImproved)
 {
     neighborhoodRuns[1]++;
-    int idx1 = -1, idx2 = -1, idx3 = -1;
+    int out1Idx = -1, out2Idx = -1, inIdx = -1;
     double currentMinDistance = s.minDistance;
     double currentCriticalCount = s.numCritical;
     bool shouldFinish = false;
@@ -134,16 +133,16 @@ void Algorithm::localSearch2Out1In(Solution& s, bool& hasImproved)
                 if (!isSolutionFeasibleAfterChange({i, j}, {k}, s, problem))
                     continue;
 
-                auto [minDistance, criticalCount] = calcMinDistanceAfterChange({i, j}, {k}, s, problem);
+                auto [minDistance, criticalCount] = get2Out1InEvaluation(s.sites[i], s.sites[j], s.sites[k], s); //calcMinDistanceAfterChange({i, j}, {k}, s, problem);
                 
                 if (minDistance > currentMinDistance || (minDistance == currentMinDistance && criticalCount < currentCriticalCount))
                 {
                     currentMinDistance = minDistance;
                     currentCriticalCount = criticalCount;
                     hasImproved = true;
-                    idx1 = i;
-                    idx2 = j;
-                    idx3 = k;
+                    out1Idx = i;
+                    out2Idx = j;
+                    inIdx = k;
                     shouldFinish = true;
                 }
             }
@@ -152,18 +151,15 @@ void Algorithm::localSearch2Out1In(Solution& s, bool& hasImproved)
 
     if (hasImproved)
     {
-        std::swap(s.sites[idx1], s.sites[idx3]);
-        std::swap(s.sites[idx2], s.sites[s.numIncluded-1]);
-        s.numIncluded--;
+        perform2Out1In(out1Idx, out2Idx, inIdx, s);
         neighborhoodImprovements[1]++;
-        updateSolutionInfo(problem, s);
     }
 }
 
 void Algorithm::localSearch1Out2In(Solution& s, bool& hasImproved)
 {
     neighborhoodRuns[2]++;
-    int idx1 = -1, idx2 = -1, idx3 = -1;
+    int outIdx = -1, in1Idx = -1, in2Idx = -1;
     double currentMinDistance = s.minDistance;
     double currentCriticalCount = s.numCritical;
     bool shouldFinish = false;
@@ -183,16 +179,16 @@ void Algorithm::localSearch1Out2In(Solution& s, bool& hasImproved)
                 if (!isSolutionFeasibleAfterChange({i}, {j, k}, s, problem))
                     continue;
 
-                auto [minDistance, criticalCount] = calcMinDistanceAfterChange({i}, {j, k}, s, problem);
+                auto [minDistance, criticalCount] = get1Out2InEvaluation(s.sites[i], s.sites[j], s.sites[k], s); //calcMinDistanceAfterChange({i}, {j, k}, s, problem);
 
                 if (minDistance > currentMinDistance || (minDistance == currentMinDistance && criticalCount < currentCriticalCount))
                 {
                     currentMinDistance = minDistance;
                     currentCriticalCount = criticalCount;
                     hasImproved = true;
-                    idx1 = i;
-                    idx2 = j;
-                    idx3 = k;
+                    outIdx = i;
+                    in1Idx = j;
+                    in2Idx = k;
                     shouldFinish = true;
                 }
             }
@@ -201,11 +197,8 @@ void Algorithm::localSearch1Out2In(Solution& s, bool& hasImproved)
 
     if (hasImproved)
     {
-        std::swap(s.sites[idx1], s.sites[idx2]);
-        std::swap(s.sites[s.numIncluded], s.sites[idx3]);
-        s.numIncluded++;
+        perform1Out2In(outIdx, in1Idx, in2Idx, s);
         neighborhoodImprovements[2]++;
-        updateSolutionInfo(problem, s);
     }
 }
 
@@ -604,6 +597,304 @@ void Algorithm::addAditionalSites(Solution& s, double additionalSiteProb)
                 std::swap(s.sites[s.numIncluded], s.sites[i]);
                 s.numIncluded++;
             }
+        }
+    }
+}
+
+DistanceAndCriticalCount Algorithm::getSwapEvaluation(int out, int in, const Solution& s)
+{
+    double minDist = std::numeric_limits<double>::max();
+    int criticalCount = 0;
+    double dist;
+    for (int i = 0; i < s.numIncluded; i++)
+    {
+        int site = s.sites[i];
+        if (site == out)
+            continue;
+        if (s.firstCenters[site] != out)
+            dist = std::min(s.distancesToFirstCenters[site], problem.distances[site][in]);
+        else
+            dist = std::min(s.distancesToSecondCenters[site], problem.distances[site][in]);
+        
+        updateTempMinDistanceAndCriticalCount(dist, minDist, criticalCount);
+    }
+    if (s.firstCenters[in] != out)
+        dist = s.distancesToFirstCenters[in];
+    else
+        dist = s.distancesToSecondCenters[in];
+    updateTempMinDistanceAndCriticalCount(dist, minDist, criticalCount);
+
+    return {minDist, criticalCount};
+}
+
+DistanceAndCriticalCount Algorithm::get2Out1InEvaluation(int out1, int out2, int in, const Solution& s)
+{
+    double minDist = std::numeric_limits<double>::max();
+    int criticalCount = 0;
+    double dist;
+    for (int i = 0; i < s.numIncluded; i++)
+    {
+        int site = s.sites[i];
+        if (site == out1 || site == out2)
+            continue;
+        if (s.firstCenters[site] != out1 && s.firstCenters[site] != out2)
+            dist = std::min(s.distancesToFirstCenters[site], problem.distances[site][in]);
+        else if (s.secondCenters[site] != out1 && s.secondCenters[site] != out2)
+            dist = std::min(s.distancesToSecondCenters[site], problem.distances[site][in]);
+        else
+        {
+            dist = problem.distances[site][in];
+            for (int j = 0; j < s.numIncluded; j++)
+            {
+                int site2 = s.sites[j];
+                if (site2 == out1 || site2 == out2)
+                    continue;
+                dist = std::min(dist, problem.distances[site][site2]); 
+            }
+        }
+
+        updateTempMinDistanceAndCriticalCount(dist, minDist, criticalCount);
+    }
+
+    if (s.firstCenters[in] != out1 && s.firstCenters[in] != out2)
+        dist = s.distancesToFirstCenters[in];
+    else if (s.secondCenters[in] != out1 && s.secondCenters[in] != out2)
+        dist = s.distancesToSecondCenters[in];
+    else
+    {
+        dist = std::numeric_limits<double>::max();
+        for (int j = 0; j < s.numIncluded; j++)
+        {
+            int site2 = s.sites[j];
+            if (site2 == out1 || site2 == out2)
+                continue;
+            dist = std::min(dist, problem.distances[in][site2]); 
+        }
+    }
+
+    updateTempMinDistanceAndCriticalCount(dist, minDist, criticalCount);
+
+    return {minDist, criticalCount};
+}
+
+DistanceAndCriticalCount Algorithm::get1Out2InEvaluation(int out, int in1, int in2, const Solution& s)
+{
+    double minDist = std::numeric_limits<double>::max();
+    int criticalCount = 0;
+    double dist;
+    for (int i = 0; i < s.numIncluded; i++)
+    {
+        int site = s.sites[i];
+        if (site == out)
+            continue;
+
+        if (s.firstCenters[site] != out)
+            dist = std::min(s.distancesToFirstCenters[site], std::min(problem.distances[site][in1], problem.distances[site][in2]));
+        else
+            dist = std::min(s.distancesToSecondCenters[site], std::min(problem.distances[site][in1], problem.distances[site][in2]));
+
+        updateTempMinDistanceAndCriticalCount(dist, minDist, criticalCount);
+    }
+
+    if (s.distancesToFirstCenters[in1] != out)
+        dist = std::min(s.distancesToFirstCenters[in1], problem.distances[in1][in2]);
+    else
+        dist = std::min(s.distancesToSecondCenters[in1], problem.distances[in1][in2]);
+    updateTempMinDistanceAndCriticalCount(dist, minDist, criticalCount);
+
+    if (s.distancesToFirstCenters[in2] != out)
+        dist = std::min(s.distancesToFirstCenters[in2], problem.distances[in2][in1]);
+    else
+        dist = std::min(s.distancesToSecondCenters[in2], problem.distances[in2][in1]);
+    updateTempMinDistanceAndCriticalCount(dist, minDist, criticalCount);
+
+    return {minDist, criticalCount};
+}
+
+void Algorithm::performSwap(int outIdx, int inIdx, Solution& s)
+{
+    int out = s.sites[outIdx], in = s.sites[inIdx];
+    std::swap(s.sites[outIdx], s.sites[inIdx]);
+    s.cost = s.cost - problem.costs[out] + problem.costs[in];
+    s.capacity = s.capacity - problem.capacities[out] + problem.capacities[in];
+
+    s.minDistance = std::numeric_limits<double>::max();
+    s.numCritical = 0;
+
+    for (int i = 0; i < problem.n; i++)
+    {
+        int site = s.sites[i];
+        if (s.firstCenters[site] == out)
+        {
+            if (problem.distances[site][in] <= s.distancesToSecondCenters[site])
+            {
+                s.firstCenters[site] = in;
+                s.distancesToFirstCenters[site] = problem.distances[site][in]; 
+            }
+            else
+            {
+                s.firstCenters[site] = s.secondCenters[site];
+                s.distancesToFirstCenters[site] = s.distancesToSecondCenters[site];
+
+                calculateSecondCenter(site, s);
+            }
+        }
+        else
+        {
+            if (problem.distances[site][in] < s.distancesToFirstCenters[site])
+            {
+                s.secondCenters[site] = s.firstCenters[site];
+                s.distancesToSecondCenters[site] = s.distancesToFirstCenters[site];
+
+                s.firstCenters[site] = in;
+                s.distancesToFirstCenters[site] = problem.distances[site][in]; 
+            }
+            else if (problem.distances[site][in] < s.distancesToSecondCenters[site])
+            {
+                s.secondCenters[site] = in;
+                s.distancesToSecondCenters[site] = problem.distances[site][in]; 
+            }
+            else if (s.secondCenters[site] == out)
+            {
+                calculateSecondCenter(site, s);
+            }
+        }
+
+        if (i < s.numIncluded)
+            updateTempMinDistanceAndCriticalCount(s.distancesToFirstCenters[site], s.minDistance, s.numCritical);
+    }
+}
+
+void Algorithm::perform2Out1In(int out1Idx, int out2Idx, int inIdx, Solution& s)
+{
+    int out1 = s.sites[out1Idx], out2 = s.sites[out2Idx], in = s.sites[inIdx]; 
+    std::swap(s.sites[out1Idx], s.sites[inIdx]);
+    std::swap(s.sites[out2Idx], s.sites[s.numIncluded-1]);
+    s.numIncluded--;
+    s.cost = s.cost - problem.costs[out1] - problem.costs[out2] + problem.costs[in];
+    s.capacity = s.capacity - problem.capacities[out1] - problem.capacities[out2] + problem.capacities[in];
+
+    s.minDistance = std::numeric_limits<double>::max();
+    s.numCritical = 0;
+
+    for (int i = 0; i < problem.n; i++)
+    {
+        int site = s.sites[i];
+        if (s.firstCenters[site] != out1 && s.firstCenters[site] != out2)
+        {
+            if (problem.distances[site][in] < s.distancesToFirstCenters[site])
+            {
+                s.secondCenters[site] = s.firstCenters[site];
+                s.distancesToSecondCenters[site] = s.distancesToFirstCenters[site];
+
+                s.firstCenters[site] = in;
+                s.distancesToFirstCenters[site] = problem.distances[site][in]; 
+            }
+            else if (problem.distances[site][in] < s.distancesToSecondCenters[site])
+            {
+                s.secondCenters[site] = in;
+                s.distancesToSecondCenters[site] = problem.distances[site][in]; 
+            }
+            else if (s.secondCenters[site] == out1 || s.secondCenters[site] == out2)
+            {
+                calculateSecondCenter(site, s);
+            }
+        }
+        else
+        {
+            if (s.secondCenters[site] != out1 && s.secondCenters[site] != out2)
+            {
+                if (problem.distances[site][in] < s.distancesToSecondCenters[site])
+                {
+                    s.firstCenters[site] = in;
+                    s.distancesToFirstCenters[site] = problem.distances[site][in];
+                }
+                else
+                {
+                    s.firstCenters[site] = s.secondCenters[site];
+                    s.distancesToFirstCenters[site] = s.distancesToSecondCenters[site];
+
+                    calculateSecondCenter(site, s);
+                }
+            }
+            else
+            {
+                s.distancesToFirstCenters[site] = std::numeric_limits<double>::max();
+                s.distancesToSecondCenters[site] = std::numeric_limits<double>::max();
+                for (int j = 0; j < s.numIncluded; j++)
+                {
+                    int site2 = s.sites[j];
+                    double dist = problem.distances[site][site2];
+                    if (dist < s.distancesToFirstCenters[site])
+                    {
+                        s.secondCenters[site] = s.firstCenters[site];
+                        s.distancesToSecondCenters[site] = s.distancesToFirstCenters[site];
+
+                        s.firstCenters[site] = site2;
+                        s.distancesToFirstCenters[site] = dist; 
+                    }
+                    else if (dist < s.distancesToSecondCenters[site])
+                    {
+                        s.secondCenters[site] = site2;
+                        s.distancesToSecondCenters[site] = dist; 
+                    }
+                }
+            }
+        }
+
+        if (i < s.numIncluded)
+            updateTempMinDistanceAndCriticalCount(s.distancesToFirstCenters[site], s.minDistance, s.numCritical);
+    }
+}
+
+void Algorithm::perform1Out2In(int outIdx, int in1Idx, int in2Idx, Solution& s)
+{
+    // 1Out2In can be performed as a composition of swap and insertion
+    performSwap(outIdx, in1Idx, s);
+
+    int in = s.sites[in2Idx];
+    std::swap(s.sites[s.numIncluded], s.sites[in2Idx]);
+    s.numIncluded++;
+    s.cost += problem.costs[in];
+    s.capacity += problem.capacities[in];
+
+    s.minDistance = std::numeric_limits<double>::max();
+    s.numCritical = 0;
+
+    for (int i = 0; i < problem.n; i++)
+    {
+        int site = s.sites[i];
+        if (problem.distances[site][in] < s.distancesToFirstCenters[site])
+        {
+            s.secondCenters[site] = s.firstCenters[site];
+            s.distancesToSecondCenters[site] = s.distancesToFirstCenters[site];
+
+            s.firstCenters[site] = in;
+            s.distancesToFirstCenters[site] = problem.distances[site][in]; 
+        }
+        else if (problem.distances[site][in] < s.distancesToSecondCenters[site])
+        {
+            s.secondCenters[site] = in;
+            s.distancesToSecondCenters[site] = problem.distances[site][in];
+        }
+
+        if (i < s.numIncluded)
+            updateTempMinDistanceAndCriticalCount(s.distancesToFirstCenters[site], s.minDistance, s.numCritical);
+    }
+}
+
+void Algorithm::calculateSecondCenter(int site, Solution& s)
+{
+    s.distancesToSecondCenters[site] = std::numeric_limits<double>::max();
+    for (int j = 0; j < s.numIncluded; j++)
+    {
+        int site2 = s.sites[j];
+        if (site2 == s.firstCenters[site])
+            continue;
+        if (problem.distances[site][site2] < s.distancesToSecondCenters[site])
+        {
+            s.secondCenters[site] = site2;
+            s.distancesToSecondCenters[site] = problem.distances[site][site2]; 
         }
     }
 }

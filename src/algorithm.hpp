@@ -33,6 +33,14 @@ private:
     Result multistartVND2();
     Result VNS();
 
+    DistanceAndCriticalCount getSwapEvaluation(int out, int in, const Solution& s);
+    DistanceAndCriticalCount get2Out1InEvaluation(int out1, int out2, int in, const Solution& s);
+    DistanceAndCriticalCount get1Out2InEvaluation(int out, int in1, int in2, const Solution& s);
+    void performSwap(int outIdx, int inIdx, Solution& s);
+    void perform2Out1In(int out1Idx, int out2Idx, int inIdx, Solution& s);
+    void perform1Out2In(int outIdx, int in1Idx, int in2Idx, Solution& s);
+    void calculateSecondCenter(int site, Solution& s);
+
     const Problem& problem;
     std::mt19937 generator;
     std::vector<int> neighborhoodRuns;
