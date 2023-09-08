@@ -202,46 +202,6 @@ void Algorithm::localSearch1Out2In(Solution& s, bool& hasImproved)
     }
 }
 
-void Algorithm::localSearchSwapWithIndexRemembering(Solution& s, bool& hasImproved)
-{
-    neighborhoodRuns[0]++;
-    double currentMinDistance = s.minDistance;
-    int currentCriticalCount = s.numCritical;
-    int endIndex = s.numIncluded; 
-    for (int i = 0; i != endIndex; i++)
-    {
-        i = i % s.numIncluded;
-        if (i == endIndex)
-            break;
-
-        if (!isSiteCritical(s.sites[i], s))
-            continue;
-        
-        for (int j = s.numIncluded; j < problem.n; j++)
-        {
-            if (getRunningTime() > timeMax)
-                return;
-
-            if (!isSolutionFeasibleAfterChange({i}, {j}, s, problem))
-                continue;
-
-            auto [minDistance, criticalCount] = calcMinDistanceAfterChange({i}, {j}, s, problem);
-            
-            if (minDistance > currentMinDistance || (minDistance == currentMinDistance && criticalCount < currentCriticalCount))
-            {
-                currentMinDistance = minDistance;
-                currentCriticalCount = criticalCount;
-
-                endIndex = i;
-                std::swap(s.sites[i], s.sites[j]);
-                neighborhoodImprovements[0]++;
-                updateSolutionInfo(problem, s);
-                neighborhoodRuns[0]++;
-            }
-        }
-    }
-}
-
 void Algorithm::vnd(Solution& s, bool shuffle, bool doLS3)
 {
     bool hasImproved;
@@ -269,50 +229,6 @@ void Algorithm::shake(Solution& s, int k)
 {
     for (int i = 0; i < k; i++)
     {
-        if (s.numIncluded == problem.n)
-            break;
-
-        std::shuffle(std::next(s.sites.begin(), s.numIncluded), s.sites.end(), generator);
-
-        bool siteAdded = false;
-        for (int j = s.numIncluded; j < problem.n; j++)
-        {
-            if (s.cost + problem.costs[s.sites[j]] > problem.maxCost)
-                continue;
-            
-            std::swap(s.sites[s.numIncluded], s.sites[j]);
-            s.capacity = s.capacity + problem.capacities[s.sites[j]];
-            s.cost = s.cost + problem.costs[s.sites[j]];
-            s.numIncluded++;
-            siteAdded = true;
-            break;
-        }
-
-        if (siteAdded)
-            continue;
-
-        std::uniform_int_distribution<int> distribIn(0, s.numIncluded - 1);
-        int idx1 = distribIn(generator);
-        
-        for (int idx2 = s.numIncluded; idx2 < problem.n; idx2++)
-        {
-            int site1 = s.sites[idx1], site2 = s.sites[idx2];
-            if (s.capacity - problem.capacities[site1] + problem.capacities[site2] >= problem.minCapacity && s.cost - problem.costs[site1] + problem.costs[site2] <= problem.maxCost)
-            {
-                std::swap(s.sites[idx1], s.sites[idx2]);
-                s.capacity = s.capacity - problem.capacities[site1] + problem.capacities[site2];
-                s.cost = s.cost - problem.costs[site1] + problem.costs[site2];
-                break;
-            }
-        }
-    }
-    updateSolutionInfo(problem, s);
-}
-
-void Algorithm::shake2(Solution& s, int k)
-{
-    for (int i = 0; i < k; i++)
-    {
         std::shuffle(s.sites.begin(), std::next(s.sites.begin(), s.numIncluded), generator);
         std::shuffle(std::next(s.sites.begin(), s.numIncluded), s.sites.end(), generator);
 
@@ -322,93 +238,81 @@ void Algorithm::shake2(Solution& s, int k)
         bool found = false;
 
         if (randNum < ls3Prob)
-        {
-            for (int idx1 = 0; idx1 < s.numIncluded && !found; idx1++)
-            {
-                for (int idx2 = s.numIncluded; idx2 < problem.n - 1 && !found; idx2++)
-                {
-                    for (int idx3 = idx2 + 1; idx3 < problem.n && !found; idx3++)
-                    {
-                        int site1 = s.sites[idx1], site2 = s.sites[idx2], site3 = s.sites[idx3];
-                        if (s.capacity - problem.capacities[site1] + problem.capacities[site2] + problem.capacities[site3] >= problem.minCapacity
-                            && s.cost - problem.costs[site1] + problem.costs[site2] + problem.costs[site3] <= problem.maxCost)
-                        {
-                            s.capacity = s.capacity - problem.capacities[site1] + problem.capacities[site2] + problem.capacities[site3];
-                            s.cost = s.cost - problem.costs[site1] + problem.costs[site2] + problem.costs[site3];
-                            std::swap(s.sites[idx1], s.sites[idx2]);
-                            std::swap(s.sites[s.numIncluded], s.sites[idx3]);
-                            s.numIncluded++;
-                            found = true;
-                        }
-                    }
-                }
-            }
-        }
+            shake1Out2In(s);
         else if (randNum < ls3Prob + ls2Prob)
-        {
-            for (int idx1 = 0; idx1 < s.numIncluded - 1 && !found; idx1++)
-            {
-                for (int idx2 = idx1 + 1; idx2 < s.numIncluded && !found; idx2++)
-                {
-                    for (int idx3 = s.numIncluded; idx3 < problem.n && !found; idx3++)
-                    {
-                        int site1 = s.sites[idx1], site2 = s.sites[idx2], site3 = s.sites[idx3];
-                        if (s.capacity - problem.capacities[site1] - problem.capacities[site2] + problem.capacities[site3] >= problem.minCapacity
-                            && s.cost - problem.costs[site1] - problem.costs[site2] + problem.costs[site3] <= problem.maxCost)
-                        {
-                            s.capacity = s.capacity - problem.capacities[site1] - problem.capacities[site2] + problem.capacities[site3];
-                            s.cost = s.cost - problem.costs[site1] - problem.costs[site2] + problem.costs[site3];
-                            std::swap(s.sites[idx1], s.sites[idx3]);
-                            std::swap(s.sites[idx2], s.sites[s.numIncluded-1]);
-                            s.numIncluded--;
-                            found = true;
-                        }
-                    }
-                }
-            }
-        }
+            shake2Out1In(s);
         else
-        {
-            for (int idx1 = 0; idx1 < s.numIncluded && !found; idx1++)
-            {
-                for (int idx2 = s.numIncluded; idx2 < problem.n && !found; idx2++)
-                {
-                    int site1 = s.sites[idx1], site2 = s.sites[idx2];
-                    if (s.capacity - problem.capacities[site1] + problem.capacities[site2] >= problem.minCapacity
-                        && s.cost - problem.costs[site1] + problem.costs[site2] <= problem.maxCost)
-                    {
-                        s.capacity = s.capacity - problem.capacities[site1] + problem.capacities[site2];
-                        s.cost = s.cost - problem.costs[site1] + problem.costs[site2];
-                        std::swap(s.sites[idx1], s.sites[idx2]);
-                        found = true;
-                    }
-                }
-            }
-        }
+            shakeSwap(s);
     }
+    // shaking in a neighborhood updates cost and capacity, but information on centers still needs to be updated
     updateSolutionInfo(problem, s);
 }
 
-void Algorithm::shakeSimple(Solution& s, int k)
+void Algorithm::shakeSwap(Solution& s)
 {
-    for (int i = 0; i < k; i++)
+    for (int idx1 = 0; idx1 < s.numIncluded; idx1++)
     {
-        if (s.numIncluded == problem.n)
-            break;
-
-        std::uniform_int_distribution<int> distribOut(s.numIncluded, problem.n - 1);
-
-        int idx = distribOut(generator);
-        int site = s.sites[idx];
-        if (s.cost + problem.costs[site] <= problem.maxCost)
+        for (int idx2 = s.numIncluded; idx2 < problem.n; idx2++)
         {
-            std::swap(s.sites[s.numIncluded], s.sites[idx]);
-            s.capacity = s.capacity + problem.capacities[site];
-            s.cost = s.cost + problem.costs[site];
-            s.numIncluded++;
+            int site1 = s.sites[idx1], site2 = s.sites[idx2];
+            if (s.capacity - problem.capacities[site1] + problem.capacities[site2] >= problem.minCapacity
+                && s.cost - problem.costs[site1] + problem.costs[site2] <= problem.maxCost)
+            {
+                s.capacity = s.capacity - problem.capacities[site1] + problem.capacities[site2];
+                s.cost = s.cost - problem.costs[site1] + problem.costs[site2];
+                std::swap(s.sites[idx1], s.sites[idx2]);
+                return;
+            }
         }
     }
-    updateSolutionInfo(problem, s);
+}
+
+void Algorithm::shake2Out1In(Solution& s)
+{
+    for (int idx1 = 0; idx1 < s.numIncluded - 1; idx1++)
+    {
+        for (int idx2 = idx1 + 1; idx2 < s.numIncluded; idx2++)
+        {
+            for (int idx3 = s.numIncluded; idx3 < problem.n; idx3++)
+            {
+                int site1 = s.sites[idx1], site2 = s.sites[idx2], site3 = s.sites[idx3];
+                if (s.capacity - problem.capacities[site1] - problem.capacities[site2] + problem.capacities[site3] >= problem.minCapacity
+                    && s.cost - problem.costs[site1] - problem.costs[site2] + problem.costs[site3] <= problem.maxCost)
+                {
+                    s.capacity = s.capacity - problem.capacities[site1] - problem.capacities[site2] + problem.capacities[site3];
+                    s.cost = s.cost - problem.costs[site1] - problem.costs[site2] + problem.costs[site3];
+                    std::swap(s.sites[idx1], s.sites[idx3]);
+                    std::swap(s.sites[idx2], s.sites[s.numIncluded-1]);
+                    s.numIncluded--;
+                    return;
+                }
+            }
+        }
+    }
+}
+
+void Algorithm::shake1Out2In(Solution& s)
+{
+    for (int idx1 = 0; idx1 < s.numIncluded; idx1++)
+    {
+        for (int idx2 = s.numIncluded; idx2 < problem.n - 1; idx2++)
+        {
+            for (int idx3 = idx2 + 1; idx3 < problem.n; idx3++)
+            {
+                int site1 = s.sites[idx1], site2 = s.sites[idx2], site3 = s.sites[idx3];
+                if (s.capacity - problem.capacities[site1] + problem.capacities[site2] + problem.capacities[site3] >= problem.minCapacity
+                    && s.cost - problem.costs[site1] + problem.costs[site2] + problem.costs[site3] <= problem.maxCost)
+                {
+                    s.capacity = s.capacity - problem.capacities[site1] + problem.capacities[site2] + problem.capacities[site3];
+                    s.cost = s.cost - problem.costs[site1] + problem.costs[site2] + problem.costs[site3];
+                    std::swap(s.sites[idx1], s.sites[idx2]);
+                    std::swap(s.sites[s.numIncluded], s.sites[idx3]);
+                    s.numIncluded++;
+                    return;
+                }
+            }
+        }
+    }
 }
 
 Result Algorithm::multistartVND()
@@ -454,63 +358,6 @@ Result Algorithm::multistartVND()
     return result;
 }
 
-Result Algorithm::multistartVND2()
-{
-    Result result;
-
-    double bestValue = std::numeric_limits<double>::min();
-    Solution bestSol;
-    int bestSolTime = -1;
-    int nonImprovingIters = 0;
-    int LS3Treshold = 2;
-    bool doLS3 = false;
-    while (getRunningTime() < timeMax)
-    {
-        Solution s;
-        bool feasibleSolutionCreated = createGreedySolution(s);
-        if (!feasibleSolutionCreated)
-        {
-            if (verbose)
-                std::cerr << "Greedy algorithm failed to construct feasible solution." << std::endl;
-            return getNonFeasibleSolutionResult();
-        }
-        //addAditionalSites(s, 0.2);
-        vnd(s, true, doLS3);
-        if (doLS3)
-            doLS3 = false;
-        if (s.minDistance > bestValue)
-        {
-            bestValue = s.minDistance;
-            bestSol = s;
-            bestSolTime = getRunningTime();
-
-            result.history.push_back({bestValue, bestSolTime});
-
-            if (verbose)
-                std::cout << bestValue << "  " << bestSolTime <<  std::endl;
-        }
-        else
-        {
-            nonImprovingIters++;
-            if (nonImprovingIters == LS3Treshold)
-            {
-                doLS3 = true;
-                nonImprovingIters = 0;
-            }
-        }
-    }
-
-    if (verbose)
-    {
-        std::cout << "distance: " << bestSol.minDistance << "  cost:  " << bestSol.cost << "  capacity:  " << bestSol.capacity << " numIncluded: " << bestSol.numIncluded << std::endl;
-        std::cout << "time: " << bestSolTime << std::endl;
-    }
-
-    fillResultInfo(result, bestSol, problem, timeMax, neighborhoodRuns, neighborhoodImprovements);
-
-    return result;
-}
-
 Result Algorithm::VNS()
 {
     Result result;
@@ -535,7 +382,7 @@ Result Algorithm::VNS()
     while (getRunningTime() < timeMax)
     {
         Solution newSol = bestSol;
-        shake2(newSol, k);
+        shake(newSol, k);
         vnd(newSol, true, false);
 
         if (newSol.minDistance > bestSol.minDistance || (newSol.minDistance == bestSol.minDistance && newSol.numCritical < bestSol.numCritical))
@@ -580,25 +427,6 @@ Result Algorithm::VNS()
     fillResultInfo(result, bestSol, problem, timeMax, neighborhoodRuns, neighborhoodImprovements, shakeIters, shakeLoops);
 
     return result;
-}
-
-void Algorithm::addAditionalSites(Solution& s, double additionalSiteProb)
-{
-    // for variable number of included sites
-    if (additionalSiteProb > 0)
-    {
-        std::uniform_real_distribution<> distrib(0.0, 1.0);    
-        for (int i = s.numIncluded; i < problem.n; i++)
-        {
-            if (s.cost + problem.costs[s.sites[i]] <= problem.maxCost && distrib(generator) < additionalSiteProb)
-            {
-                s.cost += problem.costs[s.sites[i]];
-                s.capacity += problem.capacities[s.sites[i]];
-                std::swap(s.sites[s.numIncluded], s.sites[i]);
-                s.numIncluded++;
-            }
-        }
-    }
 }
 
 DistanceAndCriticalCount Algorithm::getSwapEvaluation(int out, int in, const Solution& s)

@@ -23,16 +23,8 @@ private:
     void localSearchSwap(Solution& s, bool& hasImproved);
     void localSearch2Out1In(Solution& s, bool& hasImproved);
     void localSearch1Out2In(Solution& s, bool& hasImproved);
-    void localSearchSwapWithIndexRemembering(Solution& s, bool& hasImproved);
     void vnd(Solution& s, bool shuffle = false, bool doLS3 = true);
     void shake(Solution& s, int k);
-    void shakeSimple(Solution& s, int k);
-    void shake2(Solution& s, int k);
-    void addAditionalSites(Solution& s, double additionalSiteProb);
-    Result multistartVND();
-    Result multistartVND2();
-    Result VNS();
-
     DistanceAndCriticalCount getSwapEvaluation(int out, int in, const Solution& s);
     DistanceAndCriticalCount get2Out1InEvaluation(int out1, int out2, int in, const Solution& s);
     DistanceAndCriticalCount get1Out2InEvaluation(int out, int in1, int in2, const Solution& s);
@@ -40,6 +32,11 @@ private:
     void perform2Out1In(int out1Idx, int out2Idx, int inIdx, Solution& s);
     void perform1Out2In(int outIdx, int in1Idx, int in2Idx, Solution& s);
     void calculateSecondCenter(int site, Solution& s);
+    void shakeSwap(Solution& s);
+    void shake2Out1In(Solution& s);
+    void shake1Out2In(Solution& s);
+    Result multistartVND();
+    Result VNS();
 
     const Problem& problem;
     std::mt19937 generator;

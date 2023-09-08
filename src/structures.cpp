@@ -97,31 +97,6 @@ bool isSiteCritical(int site, const Solution& s)
     return s.distancesToFirstCenters[site] == s.minDistance;
 }
 
-DistanceAndCriticalCount calcMinDistanceAfterChange(const std::vector<int>& removedIndices, const std::vector<int>& addedIndices, const Solution& s, const Problem& p)
-{
-    double minDistance = std::numeric_limits<double>::max();
-    int criticalCount = 0;
-
-    std::vector<int> removedSites(removedIndices);
-    std::transform(removedSites.begin(), removedSites.end(), removedSites.begin(), [&s](int idx){ return s.sites[idx];});
-    for (int idx = 0; idx < s.numIncluded; idx++)
-    {
-        if (std::find(removedIndices.begin(), removedIndices.end(), idx) != removedIndices.end())
-            continue;
-        
-        double dist = calcChangedDistanceForOneSite(s.sites[idx], removedIndices, removedSites, addedIndices, s, p);
-        updateTempMinDistanceAndCriticalCount(dist, minDistance, criticalCount);
-    }
-
-    for (int idx : addedIndices)
-    {
-        double dist = calcChangedDistanceForOneSite(s.sites[idx], removedIndices, removedSites, addedIndices, s, p);
-        updateTempMinDistanceAndCriticalCount(dist, minDistance, criticalCount);
-    }
-
-    return {minDistance, criticalCount};
-}
-
 void updateTempMinDistanceAndCriticalCount(double newDist, double& minDistance, int& criticalCount)
 {
     if (newDist < minDistance)
@@ -133,34 +108,6 @@ void updateTempMinDistanceAndCriticalCount(double newDist, double& minDistance, 
     {
         criticalCount++;
     }
-}
-
-double calcChangedDistanceForOneSite(int site, const std::vector<int>& removedIndices, const std::vector<int>& removedSites, const std::vector<int>& addedIndices, const Solution& s, const Problem& p)
-{
-    double dist = std::numeric_limits<double>::max();
-    if (std::find(removedSites.begin(), removedSites.end(), s.firstCenters[site]) == removedSites.end())
-    {
-        dist = s.distancesToFirstCenters[site];
-        for (int addedIdx : addedIndices)
-            dist = std::min(dist, p.distances[site][s.sites[addedIdx]]);
-    }
-    else if (std::find(removedSites.begin(), removedSites.end(), s.secondCenters[site]) == removedSites.end()) {
-        dist = s.distancesToSecondCenters[site];
-        for (int addedIdx : addedIndices)
-            dist = std::min(dist, p.distances[site][s.sites[addedIdx]]);
-    }
-    else
-    {
-        for (int l = 0; l < s.numIncluded; l++)
-        {
-            if (std::find(removedIndices.begin(), removedIndices.end(), l) != removedIndices.end())
-                continue;
-            dist = std::min(dist, p.distances[site][s.sites[l]]);
-        }
-        for (int addedIdx : addedIndices)
-            dist = std::min(dist, p.distances[site][s.sites[addedIdx]]);
-    }
-    return dist;
 }
 
 bool isSolutionFeasibleAfterChange(const std::vector<int>& removedIndices, const std::vector<int>& addedIndices, const Solution& s, const Problem& p)

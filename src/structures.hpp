@@ -54,9 +54,7 @@ Problem loadData(const std::string& filename);
 
 void updateSolutionInfo(const Problem& p, Solution& s);
 bool isSiteCritical(int site, const Solution& s);
-DistanceAndCriticalCount calcMinDistanceAfterChange(const std::vector<int>& removedIndices, const std::vector<int>& addedIndices, const Solution& s, const Problem& p);
 void updateTempMinDistanceAndCriticalCount(double newDist, double& minDistance, int& criticalCount);
-double calcChangedDistanceForOneSite(int idx, const std::vector<int>& removedIndices, const std::vector<int>& removedSites, const std::vector<int>& addedIndices, const Solution& s, const Problem& p);
 bool isSolutionFeasibleAfterChange(const std::vector<int>& removedIndices, const std::vector<int>& addedIndices, const Solution& s, const Problem& p);
 
 std::vector<int> getIncludedSitesForOutput(const Solution& s);
