@@ -8,10 +8,10 @@
 class Algorithm
 {
 public:
-    Algorithm(const Problem& problem, const std::mt19937& generator, int timeMax = 60 * 1000, bool verbose = false, double kstepCoef = 0.5, double kmaxCoef = 0.1, double ls3Prob = 0.52, double ls2Prob = 0.24)
+    Algorithm(const Problem& problem, const std::mt19937& generator, int timeMax = 60 * 1000, bool verbose = false, bool doLS3 = false, double kstepCoef = 0.5, double kmaxCoef = 0.1, double ls3Prob = 0.52, double ls2Prob = 0.24)
         :problem(problem), generator(generator)
         , neighborhoodRuns({0,0,0}), neighborhoodImprovements({0,0,0})
-        , timeMax(timeMax), verbose(verbose)
+        , timeMax(timeMax), verbose(verbose), doLS3(doLS3)
         , kstepCoef(kstepCoef), kmaxCoef(kmaxCoef), ls3Prob(ls3Prob), ls2Prob(ls2Prob)
     {}
 
@@ -45,6 +45,7 @@ private:
     std::chrono::_V2::steady_clock::time_point startTime;
     int timeMax;
     bool verbose;
+    bool doLS3;
     double kstepCoef;
     double kmaxCoef;
     double ls3Prob;

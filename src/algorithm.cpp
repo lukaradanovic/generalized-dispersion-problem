@@ -383,7 +383,7 @@ Result Algorithm::VNS()
     {
         Solution newSol = bestSol;
         shake(newSol, k);
-        vnd(newSol, true, false);
+        vnd(newSol, true, doLS3);
 
         if (newSol.minDistance > bestSol.minDistance || (newSol.minDistance == bestSol.minDistance && newSol.numCritical < bestSol.numCritical))
         {

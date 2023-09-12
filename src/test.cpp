@@ -74,7 +74,7 @@ void iraceTest(char** argv)
     generator.seed(seed);
 
     Problem p = loadData(filename);
-    Algorithm alg = Algorithm(p, generator, 60000, false, kstepCoef, kmaxCoef, ls3Prob, ls2Prob);
+    Algorithm alg = Algorithm(p, generator, 60000, false, false, kstepCoef, kmaxCoef, ls3Prob, ls2Prob);
     Result res = alg.execute();
 
     std::cout << -res.minDistance << std::endl;
