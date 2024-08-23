@@ -5,7 +5,7 @@
 Result Algorithm::execute()
 {
     startTime = std::chrono::steady_clock::now();
-    return VNS(); //multistartVND();
+    return VNS();
 }
 
 int Algorithm::getRunningTime() const
@@ -362,9 +362,9 @@ Result Algorithm::VNS()
 {
     Result result;
 
-    int kMax = problem.n * kmaxCoef;
+    int kMax = 10;//problem.n * kmaxCoef;
     int kMin = 1;
-    int kStep = kMax * kstepCoef;
+    int kStep = 1;//kMax * kstepCoef;
     double bestValue = std::numeric_limits<double>::min();
     int bestSolTime = -1;
 

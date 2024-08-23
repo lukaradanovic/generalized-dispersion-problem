@@ -5,10 +5,17 @@
 #include <random>
 #include <chrono>
 
+//     kstep kmax ls3prob ls2prob
+// GVNS: 0.5 0.1 0.52 0.24 
+// GVNS-LS3 : 0.3 0.1 0.25 0.40
+// 
+// GVNS: Algorithm(const Problem& problem, const std::mt19937& generator, int timeMax = 60 * 1000, bool verbose = false, bool doLS3 = false, double kstepCoef = 0.5, double kmaxCoef = 0.1, double ls3Prob = 0.52, double ls2Prob = 0.24)
+// GVNS-LS3: Algorithm(const Problem& problem, const std::mt19937& generator, int timeMax = 60 * 1000, bool verbose = false, bool doLS3 = true, double kstepCoef = 0.3, double kmaxCoef = 0.1, double ls3Prob = 0.25, double ls2Prob = 0.40)
+
 class Algorithm
 {
-public:
-    Algorithm(const Problem& problem, const std::mt19937& generator, int timeMax = 60 * 1000, bool verbose = false, bool doLS3 = false, double kstepCoef = 0.5, double kmaxCoef = 0.1, double ls3Prob = 0.52, double ls2Prob = 0.24)
+public:  
+    Algorithm(const Problem& problem, const std::mt19937& generator, int timeMax = 60 * 1000, bool verbose = false, bool doLS3 = false, double kstepCoef = 0.5, double kmaxCoef = 0.1, double ls3Prob = 0.33/*0.52*/, double ls2Prob = 0.27/*0.24*/)
         :problem(problem), generator(generator)
         , neighborhoodRuns({0,0,0}), neighborhoodImprovements({0,0,0})
         , timeMax(timeMax), verbose(verbose), doLS3(doLS3)
